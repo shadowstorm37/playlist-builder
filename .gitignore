@@ -1,0 +1,40 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+ 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+ 
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+ 
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+ 
+# Editor / OS cruft
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+ 
+# Project-generated data (keep structure, ignore contents)
+data/runs/*
+!data/runs/.gitkeep
+ 
+# Logs
+*.log
