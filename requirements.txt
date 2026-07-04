@@ -1,0 +1,5 @@
+spotipy>=2.24.0
+python-dotenv>=1.0.1
+anthropic>=0.34.0
+requests>=2.32.0
+ 
