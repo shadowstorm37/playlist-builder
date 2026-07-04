@@ -36,13 +36,13 @@ def _slugify(vibe: str) -> str:
     return slug[:40]  # keep folder names reasonably short
 
 
-def run(vibe: str, length: int) -> None:
+def run(vibe: str, length: int, reference_tracks: list[str] | None = None) -> None:
     run_dir = os.path.join("data", "runs", f"{date.today().isoformat()}-{_slugify(vibe)}")
     print(f"Run folder: {run_dir}\n")
 
     # 1. Vibe -> search params
     print("Interpreting vibe...")
-    vibe_params = interpret_vibe(vibe)
+    vibe_params = interpret_vibe(vibe, reference_tracks=reference_tracks)
     save_vibe_params(vibe_params, run_dir)
     print(f"  genres: {vibe_params.get('genres')}")
     print(f"  reference artists: {vibe_params.get('reference_artists')}\n")
@@ -102,6 +102,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate a Spotify playlist from a vibe description.")
     parser.add_argument("--vibe", required=True, help="Plain-English description of the desired vibe.")
     parser.add_argument("--length", type=int, default=20, help="Target number of tracks (default: 20).")
+    parser.add_argument(
+        "--reference-tracks",
+        help=(
+            "Optional comma-separated list of 'Artist - Title' examples to ground "
+            "niche/emerging genres the LLM may not recognize from the vibe alone."
+        ),
+    )
     args = parser.parse_args()
 
-    run(args.vibe, args.length)
+    reference_tracks = None
+    if args.reference_tracks:
+        reference_tracks = [t.strip() for t in args.reference_tracks.split(",") if t.strip()]
+
+    run(args.vibe, args.length, reference_tracks=reference_tracks)

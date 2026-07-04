@@ -50,11 +50,19 @@ def curate(
     sorted_tracks = sorted(merged, key=lambda t: t["fit_score"], reverse=True)
 
     artist_counts: dict[str, int] = {}
+    seen_songs: set[tuple[str, tuple[str, ...]]] = set()
     final_list = []
 
     for track in sorted_tracks:
         if len(final_list) >= target_length:
             break
+
+        # Spotify sometimes lists the same song under multiple track IDs
+        # (single vs. album version, remaster, etc.) — dedupe by normalized
+        # name + artist so the same song can't be picked twice.
+        song_key = (track["name"].strip().lower(), tuple(sorted(track["artists"])))
+        if song_key in seen_songs:
+            continue
 
         # A track can have multiple artists (features/collabs); check all of them
         # against the cap before including it.
@@ -65,6 +73,7 @@ def curate(
             continue
 
         final_list.append(track)
+        seen_songs.add(song_key)
         for artist in track["artists"]:
             artist_counts[artist] = artist_counts.get(artist, 0) + 1
 

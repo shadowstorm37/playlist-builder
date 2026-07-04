@@ -23,14 +23,11 @@ load_dotenv()
 SCOPES = "playlist-modify-public playlist-modify-private user-read-private"
 
 
-def get_client() -> spotipy.Spotify:
+def build_auth_manager() -> SpotifyOAuth:
     """
-    Authenticate as the current user via OAuth and return a Spotipy client.
-
-    Uses the manual auth-code flow: prints a login URL, you log in in any
-    browser (doesn't need to be the same machine), then paste back the
-    full URL you were redirected to (even though that page shows an error
-    like "site can't be reached" — that's expected, the code is in the URL).
+    Construct a SpotifyOAuth manager from .env credentials, without starting
+    the login flow. Shared by both the CLI (get_client) and GUI (app.py)
+    auth paths.
     """
     client_id = os.getenv("SPOTIPY_CLIENT_ID")
     client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
@@ -42,7 +39,7 @@ def get_client() -> spotipy.Spotify:
             "SPOTIPY_CLIENT_SECRET, and SPOTIPY_REDIRECT_URI are set in .env"
         )
 
-    auth_manager = SpotifyOAuth(
+    return SpotifyOAuth(
         client_id=client_id,
         client_secret=client_secret,
         redirect_uri=redirect_uri,
@@ -50,17 +47,36 @@ def get_client() -> spotipy.Spotify:
         open_browser=False,
     )
 
-    auth_url = auth_manager.get_authorize_url()
+
+def get_auth_url(auth_manager: SpotifyOAuth) -> str:
+    """Return the Spotify login URL for the user to open in a browser."""
+    return auth_manager.get_authorize_url()
+
+
+def complete_auth(auth_manager: SpotifyOAuth, redirected_url: str) -> spotipy.Spotify:
+    """
+    Finish login using the URL the user was redirected to after approving
+    access. Returns an authenticated Spotipy client.
+    """
+    code = auth_manager.parse_response_code(redirected_url)
+    token_info = auth_manager.get_access_token(code, as_dict=True)
+    return spotipy.Spotify(auth=token_info["access_token"])
+
+
+def get_client() -> spotipy.Spotify:
+    """
+    CLI version of the login flow: prints the URL, blocks on input() for
+    the pasted-back redirect URL. GUI code should use build_auth_manager,
+    get_auth_url, and complete_auth directly instead of this function.
+    """
+    auth_manager = build_auth_manager()
+    auth_url = get_auth_url(auth_manager)
     print(f"\nGo to this URL and log in:\n{auth_url}\n")
     response_url = input(
         "After approving, paste the full URL you were redirected to "
         "(the page will look broken — that's fine, just copy the address bar): "
     ).strip()
-
-    code = auth_manager.parse_response_code(response_url)
-    token_info = auth_manager.get_access_token(code, as_dict=True)
-
-    return spotipy.Spotify(auth=token_info["access_token"])
+    return complete_auth(auth_manager, response_url)
 
 
 def get_current_user_id(sp: spotipy.Spotify) -> str:

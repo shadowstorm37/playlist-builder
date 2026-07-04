@@ -30,8 +30,16 @@ with this exact shape:
 }}
 
 Vibe: "{vibe}"
-
+{reference_section}
 Return ONLY the JSON object, nothing else."""
+
+REFERENCE_SECTION_TEMPLATE = """
+This vibe may refer to a niche or emerging genre/scene that you may not have
+strong knowledge of. Here are real example tracks the person considers a
+perfect fit — use them as your primary signal for genres and reference
+artists, rather than guessing from the vibe label alone:
+{track_list}
+"""
 
 
 def _get_client() -> genai.Client:
@@ -52,13 +60,27 @@ def _clean_json_text(text: str) -> str:
     return text.strip()
 
 
-def interpret_vibe(vibe: str) -> dict:
+def interpret_vibe(vibe: str, reference_tracks: list[str] | None = None) -> dict:
     """
     Send a vibe description to Gemini and return the parsed search-params dict.
+
+    reference_tracks: optional list of "Artist - Title" strings the user
+    already knows fit the vibe. Useful for niche/emerging genres (e.g.
+    microgenres from SoundCloud scenes) that a general-purpose LLM may not
+    have strong knowledge of from the genre name alone — grounds the
+    interpretation in real examples instead of a guessed label.
+
     Raises ValueError if the model's response isn't valid JSON.
     """
     client = _get_client()
-    prompt = PROMPT_TEMPLATE.format(vibe=vibe)
+
+    if reference_tracks:
+        track_list = "\n".join(f"- {t}" for t in reference_tracks)
+        reference_section = REFERENCE_SECTION_TEMPLATE.format(track_list=track_list)
+    else:
+        reference_section = ""
+
+    prompt = PROMPT_TEMPLATE.format(vibe=vibe, reference_section=reference_section)
 
     interaction = client.interactions.create(model=MODEL, input=prompt)
     raw_text = interaction.output_text
@@ -83,8 +105,12 @@ def save_vibe_params(params: dict, run_dir: str) -> str:
 
 
 if __name__ == "__main__":
-    # Quick manual smoke test
-    test_vibe = "upbeat road trip through the desert"
+    # Quick manual smoke test — grounding a niche genre with real examples
+    test_vibe = "botanica"
+    test_references = [
+        "phritz - It's OK, I'm Here",
+        "Eli Bishop - Afternoon Bike Ride",
+    ]
     print(f"Vibe: {test_vibe}\n")
-    params = interpret_vibe(test_vibe)
+    params = interpret_vibe(test_vibe, reference_tracks=test_references)
     print(json.dumps(params, indent=2))
